@@ -9,7 +9,7 @@ from ../blas/blas_wrapper as blas import nil
 import ../common
 import ndarray_indexers
 
-proc ndarray_memory_block_to_blas_vector[T](input:NdArray[T], offset: int, stride:int, length: int): BlasVector[T]=
+proc ndarray_memory_block_to_blas_vector*[T](input:NdArray[T], offset: int, stride:int, length: int): BlasVector[T]=
   result = init_BlasVector(T)
   result.data = addr(input.data_buffer[offset])
   shallowCopy(result.data_buffer, input.data_buffer)
@@ -18,7 +18,7 @@ proc ndarray_memory_block_to_blas_vector[T](input:NdArray[T], offset: int, strid
   result.size = length.cint
   result.has_nim_seq_data_buffer = true
 
-proc assign_view[T](base_array, another_array: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
+proc assign_view*[T](base_array, another_array: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
   assert(T.sizeof == 4 or T.sizeof == 8, fmt"calling blas function to assign values to ndarray only supports 4/8 bytes length datatypes, because I need force cast them to cfloat/cdouble.")
   var
     left_memory_block_offset: int
@@ -53,7 +53,7 @@ proc assign_view[T](base_array, another_array: NdArray[T], indexer_list: seq[Ind
       right_vector_cdouble = right_vector.force_cast(cdouble)
       blas.copy(right_vector_cdouble, left_vector_cdouble)
 
-proc assign_non_view[T](base_array, another_array: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
+proc assign_non_view*[T](base_array, another_array: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
   # when we cannot break ndarray into memory blocks, we assign values one by one
   var
     coordindates = get_all_coordinates(indexer_list)
@@ -68,7 +68,7 @@ proc assign_non_view[T](base_array, another_array: NdArray[T], indexer_list: seq
 
   result = base_array.clone
 
-proc assign_sliced[T](base_array, another_array: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
+proc assign_sliced*[T](base_array, another_array: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
   assert(not base_array.flags.isReadOnly, fmt"Cannot assign values to read-only ndarray.")
   if base_array.flags.isCopiedFromView:
     {.warning : fmt"You are assigning values to a copy of sliced view.".}
@@ -77,13 +77,13 @@ proc assign_sliced[T](base_array, another_array: NdArray[T], indexer_list: seq[I
   else:
     result = assign_non_view[T](base_array, another_array, indexer_list)
 
-proc slice_view[T](input: NdArray[T], start_coordinate_offset:int, sliced_shape: seq[int]): NdArray[T]=
+proc slice_view*[T](input: NdArray[T], start_coordinate_offset:int, sliced_shape: seq[int]): NdArray[T]=
   result = input.clone
   result.shape = sliced_shape
   result.start_idx_in_buffer = start_coordinate_offset
   result.data_ptr = addr(input.data_buffer[start_coordinate_offset])
 
-proc slice_non_view[T](input: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
+proc slice_non_view*[T](input: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
   # when we cannot break ndarray into memory blocks, we create a copy.
   var
     coordindates = get_all_coordinates(indexer_list)
@@ -94,7 +94,7 @@ proc slice_non_view[T](input: NdArray[T], indexer_list: seq[Indexer]): NdArray[T
     data_buffer[i] = input.data_buffer[location_in_base_array_data_buffer]
   result = data_buffer.toNdArray
 
-proc view_sliced[T](input: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
+proc view_sliced*[T](input: NdArray[T], indexer_list: seq[Indexer]): NdArray[T]=
   if indexer_list.check_no_array_indexer:
     var
       (sliced_shape, start_coordinate_offset) = get_sliced_shape_and_offset(input.start_idx_in_buffer, input.strides, indexer_list)

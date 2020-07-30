@@ -1,9 +1,12 @@
 import ../src/numnim
-
 when isMainModule:
+  import sequtils
+  import strformat
   var
-    a = zeros(@[10,10])
-    b = normal(@[10,10])
-  
+    a = normal(@[2,3])
+    b = normal(@[3,2])
+  echo a
   echo b
-  echo b.cholesky
+  echo a.dot(b)
+  echo a * b.transpose
+  echo a + b.transpose
