@@ -158,9 +158,12 @@ when isMainModule:
     float_df = df.floatDF
     bool_df = df.boolDF
   echo df
+  echo df.intDF["A2"]
   # echo int_df
   # echo float_df
   echo float_df["A1"]
+
+  echo df.intDF
   # echo bindSym("float")
   # import ../ndarray/ndarray
   # import ../common

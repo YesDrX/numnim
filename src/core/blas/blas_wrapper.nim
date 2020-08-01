@@ -224,16 +224,10 @@ proc spr2*(Uplo: CBLAS_UPLO, alpha: float32|float|cfloat|cdouble, A: BlasMatrix[
 
 #?GEMM
 proc gemm*(TransA: CBLAS_TRANSPOSE, TransB: CBLAS_TRANSPOSE, alpha: float32|float|cfloat|cdouble, A: BlasMatrix[cfloat], B: BlasMatrix[cfloat], C: BlasMatrix[cfloat], beta: float32|float|cfloat|cdouble) =
-  if TransA == CBLAS_TRANSPOSE.CblasTrans:
-    sgemm(A.order, TransA, TransB, C.m, C.n, A.m, alpha.cfloat, A.data, A.lda, B.data, B.lda, beta.cfloat, C.data, C.lda)
-  else:
-    sgemm(A.order, TransA, TransB, C.m, C.n, A.n, alpha.cfloat, A.data, A.lda, B.data, B.lda, beta.cfloat, C.data, C.lda)
+  sgemm(A.order, TransA, TransB, C.m, C.n, A.n, alpha.cfloat, A.data, A.lda, B.data, B.lda, beta.cfloat, C.data, C.lda)
 
 proc gemm*(TransA: CBLAS_TRANSPOSE, TransB: CBLAS_TRANSPOSE, alpha: float32|float|cfloat|cdouble, A: BlasMatrix[cdouble], B: BlasMatrix[cdouble], C: BlasMatrix[cdouble], beta: float32|float|cfloat|cdouble) =
-  if TransA == CBLAS_TRANSPOSE.CblasTrans:
-    dgemm(A.order, TransA, TransB, C.m, C.n, A.m, alpha.cdouble, A.data, A.lda, B.data, B.lda, beta.cdouble, C.data, C.lda)
-  else:
-    dgemm(A.order, TransA, TransB, C.m, C.n, A.n, alpha.cdouble, A.data, A.lda, B.data, B.lda, beta.cdouble, C.data, C.lda)
+  dgemm(A.order, TransA, TransB, C.m, C.n, A.n, alpha.cdouble, A.data, A.lda, B.data, B.lda, beta.cdouble, C.data, C.lda)
 
 #?SYMM
 proc symm*(Side: CBLAS_SIDE, Uplo: CBLAS_UPLO, alpha: float32|float|cfloat|cdouble, beta: float32|float|cfloat|cdouble, A: BlasMatrix[cfloat], B: BlasMatrix[cfloat], C: BlasMatrix[cfloat]) =

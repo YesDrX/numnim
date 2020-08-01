@@ -6,6 +6,8 @@ import ../blas/blas_vector
 import ../blas/blas_matrix
 from ../blas/blas_wrapper as blas import nil
 import nimblas/cblas
+from nimblas/cblas as cblas import nil
+from nimlapack as lapack import nil
 import ../common
 import algorithm
 
@@ -333,28 +335,43 @@ proc transpose*[T](A:NdArray[T]): NdArray[T]=
 
 proc dot*[T](A,B:NdArray[T]): NdArray[T]=
   assert(A.shape.len == 2 and B.shape.len == 2, fmt"Input ndarrys are not 2-dimensional, when calculating dot product.")
-  assert(A.shape[1] == B.shape[0], fmt"Input matrics dimentions are not compatible for dot product.")  
+  assert(A.shape[1] == B.shape[0], fmt"Input matrics dimentions are not compatible for dot product. Left Shape = {A.shape}, Right Shape = {B.shape}")  
   assert(T.sizeof == 4 or T.sizeof == 8, fmt"Wrong data type.")
   var
-    matA = A.toBlasMatrix
-    matB = B.toBlasMatrix
-    data_buffer_C = newSeq[T](A.shape[0] * B.shape[1])
-    C = data_buffer_C.toNdArray(@[A.shape[0], B.shape[1]])
+    matA : BlasMatrix[T]
+    matB : BlasMatrix[T]
+    C =  newSeq[T](A.shape[0] * B.shape[1]).toNdArray(@[B.shape[1], A.shape[0]]).transpose
     matC = C.toBlasMatrix
     TransA, TransB: CBLAS_TRANSPOSE
+    blasA_s, blasB_s, blasC_s : BlasMatrix[cfloat]
+    blasA_d, blasB_d, blasC_d : BlasMatrix[cdouble]
 
   if A.flags.F_Continuous:
+    matA = A.toBlasMatrix
+    TransA = CBLAS_TRANSPOSE.CblasNoTrans
+  else:
     matA = A.transpose.toBlasMatrix
     TransA = CBLAS_TRANSPOSE.CblasTrans
-  else:
-    TransA = CBLAS_TRANSPOSE.CblasNoTrans
+  matA.order = CBLAS_ORDER.CblasColMajor
+  
   if B.flags.F_Continuous:
-    matA = B.transpose.toBlasMatrix
-    TransB = CBLAS_TRANSPOSE.CblasTrans
-  else:
+    matB = B.toBlasMatrix
     TransB = CBLAS_TRANSPOSE.CblasNoTrans
+  else:
+    matB = B.transpose.toBlasMatrix
+    TransB = CBLAS_TRANSPOSE.CblasTrans
+  matB.order = CBLAS_ORDER.CblasColMajor
 
-  blas.gemm(TransA, TransB, 1.0, matA, matB, matC, 1.0)
+  if T.sizeof == 4:
+    blasA_s = matA.forceCast(cfloat)
+    blasB_s = matB.forceCast(cfloat)
+    blasC_s = matC.forceCast(cfloat)
+    cblas.sgemm(blasA_s.order, TransA, TransB, blasC_s.m, blasC_s.n, blasA_s.m, 1.cfloat, blasA_s.data, blasA_s.lda, blasB_s.data, blasB_s.lda, 1.cfloat, blasC_s.data, blasC_s.lda)
+  else:
+    blasA_d = matA.forceCast(cdouble)
+    blasB_d = matB.forceCast(cdouble)
+    blasC_d = matC.forceCast(cdouble)
+    cblas.dgemm(blasA_d.order, TransA, TransB, blasC_d.m, blasC_d.n, blasA_d.m, 1.cdouble, blasA_d.data, blasA_d.lda, blasB_d.data, blasB_d.lda, 1.cdouble, blasC_d.data, blasC_d.lda)
 
   result = C
 
@@ -374,25 +391,13 @@ proc flatten*[T](A:NdArray[T]): NdArray[T]=
 
 
 when isMainModule:
-  import accessers
+  # var
+  # #   B = @[1,2,3,4].astype(float).toNdArray(@[2,2])
+  # #   (q,r) = B.qr
+  #   A = @[1,2].astype(float).toNdArray(@[2,1])
+  #   B = @[3,4].astype(float).toNdArray(@[1,2])
+  # echo A.dot(B)
   var
-    a = xrange(120.0).toNdArray(@[10,12])
-    b = ndarray_memory_block_to_blas_vector(a, 0, 12, 5)
-    c = ndarray_memory_block_to_blas_vector(a, 1, 12, 5)
-    d = a[0..1,0..2]
-    e = @[2,3,4,5,6,7].astype(float).toNdArray(@[2,3])
-    f = d.toBlasMatrix
-  # echo a.strides
-  # echo a
-  # echo b
-  # echo c
-  # echo element_wise_mult_blas_vector(b, c)
-  # echo a*a
-  # element_wise_div_blas_vector(b,c)
-  # element_wise_div_blas_vector(c,b)
-  # echo d - 10.0
-  # echo d/d
-  # echo d/e
-  # echo e/d
-  echo d
-  echo d.transpose
+    idx = get_indexer_list(@[1,10])
+    blocks = get_memory_blocks(@[1,10], idx)
+  echo blocks

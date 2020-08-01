@@ -153,6 +153,12 @@ proc check_no_array_indexer*(list_indexer: seq[Indexer]): bool=
   for axis in 0..<list_indexer.len:
     if list_indexer[axis].idx_type == INDEX_TYPE.ARRAY:
       return false
+  
+proc check_all_int_indexer*(list_indexer: seq[Indexer]): bool=
+  result = true
+  for axis in 0..<list_indexer.len:
+    if list_indexer[axis].lowIdx != list_indexer[axis].highIdx or list_indexer[axis].idx_type == INDEX_TYPE.ARRAY:
+      return false
 
 proc get_location_from_coordinate*(offset: int, strides: seq[int], coordinate: seq[int]): int=
   assert(strides.len == coordinate.len, fmt"invalid coordinate for strides.")
@@ -162,15 +168,17 @@ proc get_location_from_coordinate*(offset: int, strides: seq[int], coordinate: s
 
 proc get_all_coordinates*(indexer_list: seq[Indexer]): seq[seq[int]]=
   result = @[]
-  for axis in 0 ..< indexer_list.len:
-    result.add(xrange(indexer_list[axis].lowIdx, indexer_list[axis].highIdx, 1, inclusive=true))
-  result = product(result)
-  if result.len == 1:
-    var tmp = deepCopy(result[0])
-    result = @[]
-    for i in 0..<tmp.len:
-      result.add(@[tmp[i]])
-  result.sort(cmp_seq_lexical)
+  if check_all_int_indexer(indexer_list):
+    var
+      tmp :seq[int] = @[]
+    for axis in 0 ..< indexer_list.len:
+      tmp.add(@[indexer_list[axis].lowIdx])
+    result.add(tmp)
+  else:
+    for axis in 0 ..< indexer_list.len:
+      result.add(xrange(indexer_list[axis].lowIdx, indexer_list[axis].highIdx, 1, inclusive=true))
+    result = product(result)
+    result.sort(cmp_seq_lexical)
 
 proc get_memory_blocks*(shape:seq[int], indexer_list: seq[Indexer]): (seq[seq[int]], seq[seq[int]], int, int)=
 # return : tuple of
@@ -221,7 +229,9 @@ proc get_sliced_shape_and_offset*(offset:int, strides:seq[int], indexer_list: se
 when isMainModule:
   import strutils
 
-  var
-    a = get_indexer_list(@[10,10,100])
-
-  echo a.get_all_coordinates.len
+  # var
+  #   a = get_indexer_list(@[1,10])
+  # echo a
+  # echo get_memory_blocks(@[1,10], a)
+  # echo @[@[1],@[2,3]].product
+  # echo a.get_all_coordinates.len

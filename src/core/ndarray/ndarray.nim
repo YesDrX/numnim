@@ -129,8 +129,12 @@ proc toBlasMatrix*[T](input: NdArray[T]): BlasMatrix[T]=
   result.has_nim_seq_data_buffer = true
 
   if input.strides == @[1,1]:
-    result.lda = 1.cint
-    result.order = CBLAS_ORDER.CblasRowMajor
+    if input.shape[0] == 1:
+      result.lda = 1.cint
+      result.order = CBLAS_ORDER.CblasRowMajor
+    else:
+      result.lda = 1.cint
+      result.order = CBLAS_ORDER.CblasColMajor
   elif input.strides[^1] == 1:
     assert(input.flags.C_Continuous)
     result.lda = input.strides[0].cint
@@ -143,17 +147,17 @@ proc toBlasMatrix*[T](input: NdArray[T]): BlasMatrix[T]=
   shallowCopy(result.data_buffer, input.data_buffer)
   result.offset = input.start_idx_in_buffer.cint
 
+proc toNdArray*[T](input: seq[seq[T]]): auto=
+  let implied_shape: seq[int] = input.getShapeOfSeq
+  let flatten_data_ptr = input.flattenSeq
+  result = toNdArray(flatten_data_ptr, implied_shape)
+
 proc toNdArray*[T](input: seq[T]): NdArray[T]=
   result = init_NdArray(T)
   result.data_buffer = input
   if input.len>0: result.data_ptr = addr(result.data_buffer[0])
   result.strides = @[1]
   result.shape = @[input.len]
-
-proc toNdArray*[T](input: seq[seq[T]]): auto=
-  let implied_shape: seq[int] = input.getShapeOfSeq
-  let flatten_data_ptr = input.flattenSeq
-  result = toNdArray(flatten_data_ptr, implied_shape)
 
 proc toNdArray*[T](input: seq[T], shape: seq[int]): NdArray[T]=
   if input.len>0:
@@ -252,6 +256,9 @@ when isMainModule:
     a = init_NdArrayFlags()
     b = a
     c = deepCopy(a)
+    B = @[@[-1.14318735,  0.82482718,  0.59112794,  0.10233465, -1.499152  ],
+          @[ 1.06265695,  0.94507383,  1.24635915,  1.66620749,  0.86445065],
+          @[-0.60062639,  0.46063082,  1.21422265,  0.74385278, -0.40165673]].flattenSeq.toNdArray(@[3,5])
   a.isReadOnly = true
   var d = deepCopy(a)
   echo a.isReadOnly.addr.repr
@@ -263,3 +270,5 @@ when isMainModule:
   echo b.isReadOnly
   echo c.isReadOnly
   echo d.isReadOnly
+
+  echo B

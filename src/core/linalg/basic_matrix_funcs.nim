@@ -17,7 +17,7 @@ proc det*[T: SomeFloat](A: NdArray[T]): float=
   assert(A.shape.len == 2 and A.shape[0] == A.shape[1], fmt"Input matrix is not squared.")
   assert(A.sizeof == 4 or A.sizeof == 8, fmt"Wrong data type.")
   var
-    A_cp = A.copy
+    A_cp : NdArray[T]  
     B: NdArray[T] = diag(@[1.T].cycle(A.shape[0]))
     blasA_cfloat: BlasMatrix[cfloat]
     blasA_cdouble: BlasMatrix[cdouble]
@@ -25,6 +25,11 @@ proc det*[T: SomeFloat](A: NdArray[T]): float=
     ipiv_seq: seq[cint]
     info: cint = 0
     detSign: float = 1.0
+
+  if A.flags.C_Continuous:
+    A_cp = A.transpose.copy.transpose
+  else:
+    A_cp = deepcopy(A)
 
   if T.sizeof == 4:
     blasA_cfloat = A_cp.toBlasMatrix.forceCast(cfloat)
@@ -70,22 +75,23 @@ proc inv*[T: SomeFloat](A: NdArray[T]): NdArray[T]=
     blasB_cdouble = B.toBlasMatrix.forceCast(cdouble)
     dgesv(blasA_cdouble.m.addr, blasB_cdouble.m.addr, blasA_cdouble.data, blasA_cdouble.lda.addr, ipiv.data, blasB_cdouble.data, blasB_cdouble.lda.addr, info.addr)
     assert(info==0,fmt"LAPACK return error info {info}")
+  
   result = B
 
 proc svd*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T], NdArray[T])=
   # Use xGESVD to compute SVD decomposition.
   # return U, S, VT
   assert(A.shape.len == 2, fmt"Input matrix ({A.shape}) is not squared.")
-  assert(A.sizeof == 4 or A.sizeof == 8, fmt"Wrong data type.")
+  assert(T.sizeof == 4 or T.sizeof == 8, fmt"Wrong data type.")
+
   var
     A_cp : NdArray[T]
-    transpose_result = true
   
   if A.flags.C_Continuous:
     A_cp = A.transpose.copy.transpose
   else:
     A_cp = deepcopy(A)
-    
+  
   var
     blasA = A_cp.toBlasMatrix
     blasA_s: BlasMatrix[cfloat]
@@ -94,23 +100,26 @@ proc svd*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T], NdArray[T])=
     N = blasA.n
     JOBU = "A".cstring
     JOBVT = "A".cstring
-    S = newSeq[T](min(M,N)).toNdArray
-    U = newSeq[T](M*M).toNdArray(@[M.int, M.int])
-    VT = newSeq[T](N*N).toNdArray(@[N.int, N.int])
+    S = newSeq[T](min(M,N).int).toNdArray
+    U = newSeq[T]((M*M).int).toNdArray(@[M.int, M.int]).transpose
+    VT = newSeq[T]((N*N).int).toNdArray(@[N.int, N.int]).transpose
     blasS_s, blasW_s: BlasVector[cfloat]
     blasS_d, blasW_d: BlasVector[cdouble]
     blasU_s, blasVT_s : BlasMatrix[cfloat]
     blasU_d, blasVT_d : BlasMatrix[cdouble]
-    LWORK = max(5*min(M,N), 3*min(M,N) + max(M,N)) + min(M,N)
-    WORK = newSeq[T](LWORK).toNdArray
+    LWORK = max(6 * min(M,N), 4 * min(M,N) + max(M,N)).cint
+    WORK = newSeq[T](LWORK.int).toNdArray
     INFO = 0.cint
-  
+
+  blasA.order = CBLAS_ORDER.CblasColMajor
   if T.sizeof == 4:
     blasA_s = blasA.forceCast(cfloat)
     blasS_s = S.toBlasVector.forceCast(cfloat)
     blasU_s = U.toBlasMatrix.forceCast(cfloat)
     blasVT_s = VT.toBlasMatrix.forceCast(cfloat)
     blasW_s = WORK.toBlasVector.forceCast(cfloat)
+    blasU_s.order = CBLAS_ORDER.CblasColMajor
+    blasVT_s.order = CBLAS_ORDER.CblasColMajor
     sgesvd(JOBU, JOBVT, M.addr, N.addr, blasA_s.data, blasA_s.lda.addr, blasS_s.data, blasU_s.data, blasU_s.lda.addr, blasVT_s.data, blasVT_s.lda.addr, blasW_s.data, LWORK.addr, INFO.addr)
     assert(INFO==0,fmt"LAPACK return error info {INFO}")
   else:
@@ -119,6 +128,8 @@ proc svd*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T], NdArray[T])=
     blasU_d = U.toBlasMatrix.forceCast(cdouble)
     blasVT_d = VT.toBlasMatrix.forceCast(cdouble)
     blasW_d = WORK.toBlasVector.forceCast(cdouble)
+    blasU_d.order = CBLAS_ORDER.CblasColMajor
+    blasVT_d.order = CBLAS_ORDER.CblasColMajor
     dgesvd(JOBU, JOBVT, M.addr, N.addr, blasA_d.data, blasA_d.lda.addr, blasS_d.data, blasU_d.data, blasU_d.lda.addr, blasVT_d.data, blasVT_d.lda.addr, blasW_d.data, LWORK.addr, INFO.addr)
     assert(INFO==0,fmt"LAPACK return error info {INFO}")
   result = (U, S, VT)
@@ -181,6 +192,8 @@ proc qr*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T])=
     blasA_d : BlasMatrix[cdouble]
     blasT_d, blasW_d : BlasVector[cdouble]
 
+  blasA.order = CBLAS_ORDER.CblasColMajor
+
   if T.sizeof == 4:
     blasA_s = blasA.forceCast(cfloat)
     blasT_s = TAU.toBlasVector.forceCast(cfloat)
@@ -199,7 +212,7 @@ proc qr*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T])=
     I = @[1.T].cycle(m).diag
     Q = I.copy
     tau: T
-  
+
   for i in 0 ..< min(m, n):
     tau = TAU.data_buffer[i]
     if tau.abs <= 1e-15: continue
@@ -210,7 +223,8 @@ proc qr*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T])=
     Q = Q.dot(I - (v.dot(v.transpose) * tau))
 
   for i in 0 .. min(m, n)-1:
-    A_cp.set_at(0.T, @[i,min(m,n)-i-1])
+    for j in 0 .. i-1:
+      A_cp.set_at(0.T, @[i,min(m,n)-i-1])
   
   result = (Q, A_cp)
 
@@ -274,14 +288,18 @@ proc eigvals*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T])=
   result = (WR, WI)
 
 when isMainModule:
-  # import 
+  import ../ndarray/random_ndarray
+  import ../ndarray/special_ndarray
   var
-    a = @[@[  6,  15,  55],
-          @[ 15,  55, 225],
-          @[ 55, 225, 979]].toNdArray.toSeq.astype(cfloat).toNdArray(@[3,3])
+    a = normal(@[30,1])
+    (u,s,vt) = a.svd
+    S = zeros(@[30,1])
+  S.set_at(s.at(0), 0,0)
+  # echo a
+  echo u.dot(S).dot(vt) - a
   # echo a.eigvals
-  echo a.cholesky
-  echo a.at(0,1)
+  # echo a.cholesky
+  
   # echo a.set_at(0,1)
   # echo a.transpose[0..1,_].det
   # echo a[_,0..3]
