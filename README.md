@@ -4,9 +4,9 @@ Numpy like ndarray and dataframe library for nim-lang.
 
 # Dependencies
 
-BLAS
+BLAS (to compile and install: https://github.com/xianyi/OpenBLAS)
 
-LAPACK
+LAPACK (to compile and install: http://www.netlib.org/lapack/)
 
 nimblas
 
