@@ -7,10 +7,12 @@ import ../ndarray/special_ndarray
 import ../ndarray/accessers
 import nimlapack
 import ../ndarray/random_ndarray
-import nimblas/cblas
 import ../common
 import sequtils
 import strformat
+import nimblas/cblas
+import ../ndarray/ndarray_operators
+from ../blas/blas_wrapper as blas import nil
 
 proc det*[T: SomeFloat](A: NdArray[T]): float=
   # Use xGERF to calculate inverse of a matrix.
@@ -83,7 +85,7 @@ proc svd*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T], NdArray[T])=
   # return U, S, VT
   assert(A.shape.len == 2, fmt"Input matrix ({A.shape}) is not squared.")
   assert(T.sizeof == 4 or T.sizeof == 8, fmt"Wrong data type.")
-
+  assert(A.shape[1] > 1, fmt"Something is wrong with SVD for column matrix.")
   var
     A_cp : NdArray[T]
   
@@ -287,28 +289,45 @@ proc eigvals*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T])=
     (WR, WI, V) = A.eig
   result = (WR, WI)
 
+proc inner*[T: SomeFloat](a,b: NdArray[T]): T=
+  assert(a.shape.len == 1 and b.shape.len == 1 and a.shape == b.shape, fmt"vdot is used for dot product of two vectors.")
+  assert(T.sizeof == 4 or T.sizeof == 8, fmt"Wrong data type")
+  var
+    blas_a_s, blas_b_s : BlasVector[cfloat]
+    blas_a_d, blas_b_d : BlasVector[cdouble]
+  if T.sizeof == 4:
+    blas_a_s = a.toBlasVector.forceCast(cfloat)
+    blas_b_s = b.toBlasVector.forceCast(cfloat)
+    result = blas.dot(blas_a_s, blas_b_s).T
+  else:
+    blas_a_d = a.toBlasVector.forceCast(cdouble)
+    blas_b_d = b.toBlasVector.forceCast(cdouble)
+    result = blas.dot(blas_a_d, blas_b_d).T
+
+proc outer*[T: SomeFloat](a,b: NdArray[T]): NdArray[T]=
+  assert(a.shape.len == 1 and b.shape.len == 1, fmt"vdot is used for dot product of two vectors.")
+  assert(T.sizeof == 4 or T.sizeof == 8, fmt"Wrong data type")
+  var
+    M = a.shape[0]
+    N = b.shape[0]
+    A = a.reshape(@[M,1])
+    B = b.reshape(@[1,N])
+  result = A.dot(B)
+
+proc norm*[T](v: NdArray[T]): T=
+  assert(v.shape.len == 1, fmt"Input is not a vector.")
+  assert(T.sizeof == 4 or T.sizeof == 8)
+  if T.sizeof == 4:
+    return blas.nrm2(v.toBlasVector.forceCast(cfloat)).T
+  else:
+    return blas.nrm2(v.toBlasVector.forceCast(cdouble)).T
+
 when isMainModule:
   import ../ndarray/random_ndarray
   import ../ndarray/special_ndarray
   var
-    a = normal(@[30,1])
-    (u,s,vt) = a.svd
-    S = zeros(@[30,1])
-  S.set_at(s.at(0), 0,0)
-  # echo a
-  echo u.dot(S).dot(vt) - a
-  # echo a.eigvals
-  # echo a.cholesky
+    a = normal(@[30])
+    b = normal(@[20])
   
-  # echo a.set_at(0,1)
-  # echo a.transpose[0..1,_].det
-  # echo a[_,0..3]
-  # echo a[_, 0..3].inv
-  # echo a.shape.len
-  # echo a
-  # echo "U".cstring
-
-  # var
-  #   m = 10
-  #   x = (@[0.cfloat].cycle(m))
-  # echo x
+  echo a.outer(b)
+  echo a.norm

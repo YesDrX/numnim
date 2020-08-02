@@ -378,7 +378,8 @@ proc dot*[T](A,B:NdArray[T]): NdArray[T]=
 proc reshape*[T](A:NdArray[T], shape: seq[int]): NdArray[T]=
   #for now, when reshape a ndarray, we make a clean copy
   var
-    data_buffer = A.toSeq
+    data_buffer : seq[T]
+  shallowCopy(data_buffer, A.toSeq)
   result = data_buffer.toNdArray(shape)
 
 proc ravel*[T](A:NdArray[T]): NdArray[T]=

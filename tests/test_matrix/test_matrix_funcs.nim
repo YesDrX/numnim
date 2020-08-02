@@ -1,7 +1,7 @@
 import sugar
 import nimpy
 import sequtils
-import ../src/numnim
+import ../../src/numnim
 
 let
   np* = pyImport("numpy")
