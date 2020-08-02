@@ -72,7 +72,9 @@ proc diag*[T](mat: NdArray[T]): NdArray[T]=
 proc linspace*[T](start, stop:T, num: int): NdArray[T]=
   var
     step = (stop - start) / (num.T-1)
-    data_buffer = xrange(start, stop, step, inclusive=true)
+    data_buffer = newSeq[T](num)
+  for i in 0..<num:
+    data_buffer[i] = start + step * i.T
   result = data_buffer.toNdArray
 
 proc logspace*[T:float|float32|cfloat|cdouble|clongdouble](start, stop:T, num: int, base: float = 10.0): NdArray[T]=
