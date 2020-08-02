@@ -138,7 +138,7 @@ proc svd*[T: SomeFloat](A: NdArray[T]): (NdArray[T], NdArray[T], NdArray[T])=
 
 proc cholesky*[T: SomeFloat](A: NdArray[T]): NdArray[T]=
   assert(A.shape.len == 2 and A.shape[0] == A.shape[1], fmt"Input matrix is not squared.")
-  assert(A.sizeof == 4 or A.sizeof == 8, fmt"Wrong data type.")
+  assert(T.sizeof == 4 or T.sizeof == 8, fmt"Wrong data type.")
   {.warning: "I dont check whether the input matrix is symmetric or not.".}
   var
     A_cp: NdArray[T]
@@ -163,7 +163,9 @@ proc cholesky*[T: SomeFloat](A: NdArray[T]): NdArray[T]=
     spotrf(Uplo, blasA_s.m.addr, blasA_s.data, blasA_s.lda.addr, INFO.addr)
     assert(INFO==0,fmt"LAPACK return error info {INFO}")
   else:
-    discard 0
+    blasA_d = blasA.forceCast(cdouble)
+    dpotrf(Uplo, blasA_d.m.addr, blasA_d.data, blasA_d.lda.addr, INFO.addr)
+    assert(INFO==0,fmt"LAPACK return error info {INFO}")
   
   for i in 1..<n:
     for j in 0..<i:
@@ -326,8 +328,5 @@ when isMainModule:
   import ../ndarray/random_ndarray
   import ../ndarray/special_ndarray
   var
-    a = normal(@[30])
-    b = normal(@[20])
-  
-  echo a.outer(b)
-  echo a.norm
+    a = @[5,3,3,4].astype(cfloat).toNdArray(@[2,2])
+  echo a.cholesky.dot(a.cholesky.transpose)

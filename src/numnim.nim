@@ -8,7 +8,8 @@ import ./core/common,
        ./core/ndarray/special_ndarray,
        ./core/linalg/basic_matrix_funcs,
        ./core/dataframe/dataframe_object,
-       ./core/io/io_csv
+       ./core/io/io_csv,
+       strformat
 
 export  common,
         ndarray,
@@ -20,5 +21,6 @@ export  common,
         special_ndarray,
         basic_matrix_funcs,
         dataframe_object,
-        io_csv
+        io_csv,
+        strformat
 
