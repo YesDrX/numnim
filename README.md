@@ -16,6 +16,7 @@ nimlapack
 # Installation
 ```
 git clone https://github.com/YesDrX/numnim
+cd numnim
 nimble install
 ```
 or
