@@ -23,6 +23,11 @@ or
 nimble install numnim
 ```
 
+# Documentation
+
+At this moment, nothing is stable. So documentation is still at its minimum level. Check wiki for some basic descriptions : https://github.com/YesDrX/numnim/wiki
+
+
 # Examples
 
 ```nim
@@ -172,3 +177,8 @@ echo A
 #     [3.0, 4.0]
 # ], shape = [2, 2]
 ```
+
+# Why numnim?
+There are multiple nim based ndarray projectes, such as Arraymancer with a focus on ML, and neo. Both are great, and their support for GPU backend is a great inspiration for my next steps. However, I'm just new to nim and more familiar with numpy's api. So I decided to create some new wheel for nim with more intuitive interface.
+
+One can easily use nimy to interop with numpy in python, but because of the GIL in python, you can't easily do parallel in nim with nimpy. With something written in nim, one can easily run true threading in nim.
