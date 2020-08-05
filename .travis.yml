@@ -1,0 +1,32 @@
+language: c
+
+matrix:
+  include:
+    - os: linux
+      env: CHANNEL=stable
+      compiler: gcc
+
+before_apt:
+  - sudo add-apt-repository ppa:deadsnakes/ppa
+  - sudo apt-get update
+  - sudo apt-get upgrade
+
+addons:
+  apt:
+    packages:
+      - libopenblas-dev
+      - liblapack-dev
+      - python3-dev
+      - python3-numpy
+  
+install:
+  - export CHOOSENIM_NO_ANALYTICS=1
+  - curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh
+  - sh init.sh -y
+  - export PATH=~/.nimble/bin:$PATH
+  - echo "export PATH=~/.nimble/bin:$PATH" >> ~/.profile
+  - choosenim $CHANNEL
+
+script:
+    - nimble install -y
+    - nimble test
