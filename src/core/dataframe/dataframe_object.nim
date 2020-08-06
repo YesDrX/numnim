@@ -33,10 +33,6 @@ proc checkShapeCompatibility*[T](df: TypedDataFrame[T], shape: seq[int]): bool=
   else:
     quit(fmt"There is no column in the Typed DataFrame.")
 
-proc `[]`*[T](tdf: TypedDataFrame[T], columnName: string): NdArray[T]=
-  assert(tdf.columns.contains(columnName),fmt"{columnName} is not found in the typed dataframe.")
-  result = tdf.DF[tdf.columns.find(columnName)]
-
 proc getColIdx*(df:DataFrame, colName: string): int=
   result = df.columns.find(colName)
 
@@ -77,6 +73,16 @@ proc initDataFrame*(): DataFrame =
   result.floatDF = initTypedDataFrame[float]()
   result.boolDF = initTypedDataFrame[bool]()
   result.stringDF = initTypedDataFrame[string]()
+
+proc `[]`*[T](tdf: TypedDataFrame[T], columnName: string): NdArray[T]=
+  assert(tdf.columns.contains(columnName),fmt"{columnName} is not found in the typed dataframe.")
+  result = tdf.DF[tdf.columns.find(columnName)]
+
+proc `[]`*[T](tdf: TypedDataFrame[T], columnNames: seq[string]): TypedDataFrame[T]=
+  result = initTypedDataFrame[T]()
+  for colName in columnNames:
+    assert(colName in tdf.columns, fmt"{colName} is not found.")
+    discard result.addColumn(colName, tdf[colName])
 
 proc syncIndex*[T](df: DataFrame, tdf: TypedDataFrame[T]) =
   # if df.rowIndex.len == 0 and df.indexDF.isNil and tdf.indexDF.isNil and tdf.rowIndex.len > 0:
@@ -554,4 +560,4 @@ when isMainModule:
   d.set_index(["A","B"], false)
   echo  d
   echo d.stringDF.`$`(20)
-  echo d[["C"]]
+  echo d.stringDF[@["C"]]
